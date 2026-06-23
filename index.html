@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<title>Awake?</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#000000;
+    --surface:#0d0b09;
+    --line:#1c1813;
+    --dim:#5f5446;      /* muted warm taupe - secondary text */
+    --text:#b8a890;     /* warm dim parchment - never pure white */
+    --amber:#d98a4a;    /* lamp-on glow */
+    --amber-soft:#a86a37;
+    --asleep:#4a443d;   /* lamp-off warm grey */
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;height:100%;background:var(--bg);}
+  body{
+    font-family:"Fraunces",Georgia,serif;
+    color:var(--text);
+    min-height:100dvh;
+    display:flex;flex-direction:column;
+    overflow:hidden;
+    padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+  .util{font-family:system-ui,-apple-system,sans-serif;}
+
+  /* top bar */
+  .topbar{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:22px 24px 0;font-size:13px;color:var(--dim);
+    letter-spacing:.04em;
+  }
+  .conn{display:flex;align-items:center;gap:7px;}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--asleep);transition:background .4s;}
+  .dot.on{background:var(--amber);box-shadow:0 0 8px var(--amber-soft);}
+
+  /* main partner hero */
+  main{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;padding:0 28px;}
+  .halo{
+    width:230px;height:230px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    transition:all 1.1s cubic-bezier(.4,0,.2,1);
+    position:relative;
+  }
+  .halo .core{
+    width:128px;height:128px;border-radius:50%;
+    background:var(--asleep);
+    transition:all 1.1s cubic-bezier(.4,0,.2,1);
+  }
+  .halo.awake{
+    background:radial-gradient(circle,rgba(217,138,74,.22) 0%,rgba(217,138,74,.07) 45%,transparent 70%);
+  }
+  .halo.awake .core{
+    background:radial-gradient(circle at 50% 42%,#f0a85e 0%,var(--amber) 55%,var(--amber-soft) 100%);
+    box-shadow:0 0 60px 6px rgba(217,138,74,.45);
+  }
+  .partner-name{font-size:15px;color:var(--dim);letter-spacing:.12em;text-transform:uppercase;margin-top:40px;}
+  .partner-state{font-size:40px;font-weight:300;margin-top:10px;line-height:1.1;text-align:center;}
+  .partner-state .accent{color:var(--amber);}
+  .partner-since{font-size:14px;color:var(--dim);margin-top:12px;min-height:18px;}
+
+  /* my control */
+  footer{padding:0 24px 36px;}
+  .divider{height:1px;background:var(--line);margin:0 6px 30px;}
+  .my-label{font-family:system-ui,sans-serif;font-size:12px;color:var(--dim);letter-spacing:.14em;text-transform:uppercase;text-align:center;margin-bottom:14px;}
+  .toggle{
+    width:100%;border:1px solid var(--line);background:var(--surface);
+    border-radius:20px;padding:22px;color:var(--text);
+    display:flex;align-items:center;justify-content:space-between;
+    cursor:pointer;transition:all .5s;font-family:"Fraunces",serif;
+  }
+  .toggle:active{transform:scale(.985);}
+  .toggle.awake{border-color:rgba(217,138,74,.35);background:linear-gradient(180deg,rgba(217,138,74,.10),rgba(217,138,74,.03));}
+  .toggle .state{font-size:24px;font-weight:300;}
+  .toggle.awake .state{color:var(--amber);}
+  .toggle .hint{font-family:system-ui,sans-serif;font-size:12px;color:var(--dim);letter-spacing:.03em;}
+  .pip{width:46px;height:26px;border-radius:14px;background:var(--line);position:relative;flex-shrink:0;transition:background .5s;}
+  .pip::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:var(--asleep);transition:all .5s;}
+  .toggle.awake .pip{background:rgba(217,138,74,.3);}
+  .toggle.awake .pip::after{left:23px;background:var(--amber);box-shadow:0 0 10px var(--amber-soft);}
+
+  /* setup + status screens */
+  .screen{position:fixed;inset:0;background:var(--bg);display:none;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:36px;text-align:center;}
+  .screen.show{display:flex;}
+  .screen h1{font-weight:300;font-size:30px;margin:0;}
+  .screen p{font-family:system-ui,sans-serif;color:var(--dim);font-size:14px;line-height:1.6;margin:0;max-width:300px;}
+  input.name{
+    font-family:"Fraunces",serif;font-size:22px;text-align:center;color:var(--text);
+    background:var(--surface);border:1px solid var(--line);border-radius:16px;
+    padding:16px 18px;width:100%;max-width:300px;outline:none;
+  }
+  input.name:focus{border-color:var(--amber-soft);}
+  .slots{display:flex;flex-direction:column;gap:12px;width:100%;max-width:300px;}
+  .slot-btn{
+    font-family:"Fraunces",serif;font-size:18px;color:var(--text);
+    background:var(--surface);border:1px solid var(--line);border-radius:16px;
+    padding:18px;cursor:pointer;transition:all .3s;
+  }
+  .slot-btn:active{transform:scale(.98);}
+  .slot-btn .sub{display:block;font-family:system-ui,sans-serif;font-size:12px;color:var(--dim);margin-top:4px;letter-spacing:.04em;}
+  .slot-btn[disabled]{opacity:.4;cursor:default;}
+  .reset-link{font-family:system-ui,sans-serif;font-size:11px;color:var(--line);margin-top:8px;background:none;border:none;cursor:pointer;letter-spacing:.05em;}
+  .topbar .reset-link{color:var(--dim);}
+</style>
+</head>
+<body>
+
+  <div class="topbar util">
+    <span id="clock">—</span>
+    <span class="conn"><span class="dot" id="dot"></span><span id="connText">connecting…</span></span>
+  </div>
+
+  <main>
+    <div class="halo" id="halo"><div class="core"></div></div>
+    <div class="partner-name" id="partnerName">—</div>
+    <div class="partner-state" id="partnerState">…</div>
+    <div class="partner-since" id="partnerSince"></div>
+  </main>
+
+  <footer>
+    <div class="divider"></div>
+    <div class="my-label">your status</div>
+    <div class="toggle" id="toggle" role="button" tabindex="0">
+      <div>
+        <div class="state" id="myState">—</div>
+        <div class="hint" id="myHint">tap to switch</div>
+      </div>
+      <div class="pip"></div>
+    </div>
+    <div style="text-align:center"><button class="reset-link util" id="changePhone">this isn't me — switch phone</button></div>
+  </footer>
+
+  <!-- not-configured screen -->
+  <div class="screen" id="cfgScreen">
+    <h1>Almost there</h1>
+    <p>This app needs its Firebase keys before it can sync. Once those are pasted in, this screen disappears.</p>
+  </div>
+
+  <!-- login screen -->
+  <div class="screen" id="login">
+    <h1>Connect this phone</h1>
+    <p>Enter your household password. You'll only do this once on this phone.</p>
+    <input class="name util" id="pwInput" type="password" placeholder="password" autocomplete="current-password">
+    <button class="slot-btn" id="loginBtn" style="width:100%;max-width:300px">Enter</button>
+    <div class="util" id="loginErr" style="color:#b5705a;font-size:13px;min-height:16px"></div>
+  </div>
+
+  <!-- setup screen -->
+  <div class="screen" id="setup">
+    <h1>Set up this phone</h1>
+    <p>Whose phone is this? Type a name, then tap the open spot.</p>
+    <input class="name util" id="nameInput" placeholder="your name" maxlength="14" autocomplete="off">
+    <div class="slots" id="slotBtns"></div>
+  </div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+  import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+  import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js";
+
+  /* ───────────────────────────────────────────────────────────
+     PASTE YOUR FIREBASE CONFIG HERE (we'll do this together).
+     Leave it as-is for now — the app will show a friendly
+     "Almost there" screen until real keys are filled in.
+  ─────────────────────────────────────────────────────────── */
+  const firebaseConfig = {
+    apiKey: "AIzaSyC3GkxECT9yJrkw6A6-DY_wSYA2MNfbRIw",
+    authDomain: "awake-80a13.firebaseapp.com",
+    databaseURL: "https://awake-80a13-default-rtdb.firebaseio.com",
+    projectId: "awake-80a13",
+    appId: "1:746882437179:web:0f2dc9e5e6a9b955500c1e"
+  };
+
+  /* The hour (0–23, local time) when both statuses auto-reset to asleep.
+     3 = 3am. Change this single number if you want a different boundary. */
+  const RESET_HOUR = 3;
+
+  /* The shared sign-in email — NOT secret, safe to leave here.
+     The PASSWORD is never written in this file; each phone types it once. */
+  const SHARED_EMAIL = "home@awake-80a13.web.app";
+  /* ─────────────────────────────────────────────────────────── */
+
+  const $ = id => document.getElementById(id);
+  const isConfigured = !firebaseConfig.apiKey.startsWith("PASTE_");
+
+  // local memory of who this phone is
+  let me = null;
+  try { me = JSON.parse(localStorage.getItem("awake.me") || "null"); } catch(e){}
+  let latest = { a:null, b:null };
+
+  // ---- clock ----
+  function tick(){
+    const d = new Date();
+    let h = d.getHours(), m = String(d.getMinutes()).padStart(2,"0");
+    const ap = h < 12 ? "am" : "pm"; h = h % 12 || 12;
+    $("clock").textContent = `${h}:${m} ${ap}`;
+  }
+  tick(); setInterval(tick, 15000);
+
+  function fmtTime(ts){
+    if(!ts) return "";
+    const d = new Date(ts);
+    let h = d.getHours(), m = String(d.getMinutes()).padStart(2,"0");
+    const ap = h < 12 ? "am" : "pm"; h = h % 12 || 12;
+    return `${h}:${m} ${ap}`;
+  }
+
+  // most recent RESET_HOUR boundary in the past
+  function lastBoundary(){
+    const n = new Date();
+    const b = new Date(n); b.setHours(RESET_HOUR,0,0,0);
+    if(n < b) b.setDate(b.getDate()-1);
+    return b.getTime();
+  }
+  // a stored "awake" only counts if it was set after the last boundary
+  function effectiveAwake(slot){
+    if(!slot || !slot.awake) return false;
+    return (slot.ts || 0) >= lastBoundary();
+  }
+
+  if(!isConfigured){
+    $("cfgScreen").classList.add("show");
+  } else {
+    start();
+  }
+
+  function start(){
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getDatabase(app);
+    window.__db = db;
+    let listenersAttached = false;
+
+    // --- shared-password login ---
+    const loginBtn = $("loginBtn"), pwInput = $("pwInput"), loginErr = $("loginErr");
+    function doLogin(){
+      const pw = pwInput.value;
+      if(!pw) return;
+      loginErr.textContent = "";
+      loginBtn.textContent = "signing in…";
+      loginBtn.disabled = true;
+      signInWithEmailAndPassword(auth, SHARED_EMAIL, pw).catch(() => {
+        loginErr.textContent = "That didn't match — try again.";
+        loginBtn.textContent = "Enter";
+        loginBtn.disabled = false;
+      });
+    }
+    loginBtn.addEventListener("click", doLogin);
+    pwInput.addEventListener("keydown", e => { if(e.key==="Enter") doLogin(); });
+
+    onAuthStateChanged(auth, user => {
+      if(!user){ $("login").classList.add("show"); return; }
+      $("login").classList.remove("show");
+      pwInput.value = ""; loginBtn.textContent = "Enter"; loginBtn.disabled = false;
+
+      if(listenersAttached){ render(); maybeSetup(); return; }
+      listenersAttached = true;
+
+      // connection indicator
+      onValue(ref(db, ".info/connected"), s => {
+        const on = s.val() === true;
+        $("dot").classList.toggle("on", on);
+        $("connText").textContent = on ? "synced" : "connecting…";
+      });
+
+      // live data
+      onValue(ref(db, "status"), snap => {
+        const v = snap.val() || {};
+        latest = { a: v.a || null, b: v.b || null };
+
+        // tidy: if MY stored awake is now stale, write it back to asleep
+        if(me){
+          const mine = latest[me.slot];
+          if(mine && mine.awake && !effectiveAwake(mine)){
+            set(ref(db, `status/${me.slot}`), { name: me.name, awake:false, ts: mine.ts || Date.now() });
+          }
+        }
+        render();
+        maybeSetup();
+      });
+    });
+
+    // toggle my status
+    function flip(){
+      if(!me) return;
+      const mine = latest[me.slot] || {};
+      const nowAwake = !effectiveAwake(mine);
+      set(ref(db, `status/${me.slot}`), { name: me.name, awake: nowAwake, ts: Date.now() });
+    }
+    $("toggle").addEventListener("click", flip);
+    $("toggle").addEventListener("keydown", e => { if(e.key===" "||e.key==="Enter"){e.preventDefault();flip();} });
+  }
+
+  // ---- setup flow (pick name + slot) ----
+  function maybeSetup(){
+    if(me){ $("setup").classList.remove("show"); return; }
+    $("setup").classList.add("show");
+    const wrap = $("slotBtns");
+    wrap.innerHTML = "";
+    [["a"],["b"]].forEach(([slot]) => {
+      const occ = latest[slot];
+      const btn = document.createElement("button");
+      btn.className = "slot-btn";
+      if(occ && occ.name){
+        btn.innerHTML = `${occ.name}<span class="sub">taken — pick the other</span>`;
+        btn.disabled = true;
+      } else {
+        btn.innerHTML = `This phone is mine<span class="sub">use the open spot (${slot.toUpperCase()})</span>`;
+        btn.onclick = () => claim(slot);
+      }
+      wrap.appendChild(btn);
+    });
+  }
+  function claim(slot){
+    const name = ($("nameInput").value || "").trim() || "Me";
+    me = { slot, name, id: Math.random().toString(36).slice(2) };
+    try { localStorage.setItem("awake.me", JSON.stringify(me)); } catch(e){}
+    if(window.__db){
+      set(ref(window.__db, `status/${slot}`), { name, awake:false, ts: Date.now() });
+    }
+    $("setup").classList.remove("show");
+    render();
+  }
+
+  $("changePhone").addEventListener("click", () => {
+    try { localStorage.removeItem("awake.me"); } catch(e){}
+    me = null; maybeSetup();
+  });
+
+  // ---- render ----
+  function render(){
+    if(!me) return;
+    const partnerSlot = me.slot === "a" ? "b" : "a";
+    const p = latest[partnerSlot];
+    const pAwake = effectiveAwake(p);
+    const pName = (p && p.name) ? p.name : "Your partner";
+
+    $("partnerName").textContent = pName;
+    $("halo").classList.toggle("awake", pAwake);
+    if(pAwake){
+      $("partnerState").innerHTML = `is <span class="accent">awake</span>`;
+      $("partnerSince").textContent = p.ts ? `since ${fmtTime(p.ts)}` : "";
+    } else {
+      $("partnerState").textContent = "is asleep";
+      $("partnerSince").textContent = (p && p.name) ? "" : "not set up yet";
+    }
+
+    const mine = latest[me.slot];
+    const mAwake = effectiveAwake(mine);
+    const t = $("toggle");
+    t.classList.toggle("awake", mAwake);
+    $("myState").textContent = mAwake ? "You're awake" : "You're asleep";
+    $("myHint").textContent = mAwake ? "tap to set yourself back to asleep" : "tap when you wake up";
+  }
+
+  // register service worker (for installable / offline launch)
+  if("serviceWorker" in navigator){
+    navigator.serviceWorker.register("sw.js").catch(()=>{});
+  }
+</script>
+</body>
+</html>
