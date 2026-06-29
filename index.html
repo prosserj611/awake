@@ -157,7 +157,7 @@
   <!-- setup screen -->
   <div class="screen" id="setup">
     <h1>Set up this phone</h1>
-    <p>Whose phone is this? Type a name, then tap the open spot.</p>
+    <p>Tap your spot below. If your name's already there from before, just tap it to reconnect — no need to retype.</p>
     <input class="name util" id="nameInput" placeholder="your name" maxlength="14" autocomplete="off">
     <div class="slots" id="slotBtns"></div>
   </div>
@@ -306,26 +306,27 @@
     $("setup").classList.add("show");
     const wrap = $("slotBtns");
     wrap.innerHTML = "";
-    [["a"],["b"]].forEach(([slot]) => {
+    ["a","b"].forEach(slot => {
       const occ = latest[slot];
       const btn = document.createElement("button");
       btn.className = "slot-btn";
       if(occ && occ.name){
-        btn.innerHTML = `${occ.name}<span class="sub">taken — pick the other</span>`;
-        btn.disabled = true;
+        btn.innerHTML = `${occ.name}<span class="sub">tap if this phone is ${occ.name}</span>`;
       } else {
-        btn.innerHTML = `This phone is mine<span class="sub">use the open spot (${slot.toUpperCase()})</span>`;
-        btn.onclick = () => claim(slot);
+        btn.innerHTML = `Open spot<span class="sub">tap to use spot ${slot.toUpperCase()}</span>`;
       }
+      btn.onclick = () => claim(slot);
       wrap.appendChild(btn);
     });
   }
   function claim(slot){
-    const name = ($("nameInput").value || "").trim() || "Me";
+    const cur = latest[slot] || {};
+    const typed = ($("nameInput").value || "").trim();
+    const name = typed || cur.name || "Me";
     me = { slot, name, id: Math.random().toString(36).slice(2) };
     try { localStorage.setItem("awake.me", JSON.stringify(me)); } catch(e){}
     if(window.__db){
-      set(ref(window.__db, `status/${slot}`), { name, awake:false, ts: Date.now() });
+      set(ref(window.__db, `status/${slot}`), { name, awake: cur.awake || false, ts: cur.ts || Date.now() });
     }
     $("setup").classList.remove("show");
     render();
